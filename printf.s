@@ -507,7 +507,7 @@ skip_zeroes:
 section .data  
 
 LONG_LONG_MAX       equ 0xffffffffffffffff
-MAX_STR_LEN         equ 60;0xe9
+MAX_STR_LEN         equ 0xe9
 
 printing_str:       db "ssdnsjdsdsndg  %b fdsdz", 0
 param1:             dq -2

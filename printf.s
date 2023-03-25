@@ -2,27 +2,33 @@ section .text
 
 global _start 
 
-_start:     mov rax, [param1]
-            push rax
-            push rax
-            push rax
-            push rax
+;==============================================
+;==============================================
+_start:     ;                                 =
+            mov rax, [param1];                =
+            push rax;                         =
+            push rax;                         =
+            push rax;                         =
+            push rax;                         =
+            ;                                 =  
+            mov rax, printing_str;            =
+            push rax;                         =
+            call printf;                      =
+            pop rax;                          =
+            ;                                 =
+            pop rax;                          =
+            pop rax;                          =
+            pop rax;                          =
+            pop rax;                          =
+            ;                                 =
+            mov rax, 0x3c   ;-|               =
+            xor rdi, rdi    ; | exit (rdi = 0)=
+            syscall         ;-|               =
+;==============================================
+;==============================================
 
-            mov rax, printing_str
-            push rax 
-            call printf 
-            pop rax 
-            
-            pop rax
-            pop rax
-            pop rax 
-            pop rax  
 
-            mov rax, 0x3c   ;-|
-            xor rdi, rdi    ; | exit (rdi = 0)
-            syscall         ;-|
-
-;--------------------------------------------
+;=============================================
 ;cdecl printf (const char *format,...)                               
 ;--------------------------------------------
 ;Entry: stack 
@@ -106,8 +112,9 @@ printf:
                 syscall
 
                 ret 
+;=============================================
 
-;--------------------------------------------
+;=============================================
 ;error format treatment
 ;--------------------------------------------
 ;Entry:
@@ -117,9 +124,10 @@ printf:
 printf_default:
                 ;error
                 ret 
-;--------------------------------------------
+;=============================================
 
-;--------------------------------------------
+
+;=============================================
 ;auxilary func for printf: printing %c                               
 ;--------------------------------------------
 ;Entry: r9  = attr: pointer for first untreated parameter  
@@ -135,8 +143,9 @@ printf_c:
             pop rsi 
 
             ret 
+;=============================================
 
-;--------------------------------------------
+;=============================================
 ;auxilary func for printf: printing %x                               
 ;--------------------------------------------
 ;Entry: r9  = attr: pointer for first untreated parameter  
@@ -172,9 +181,9 @@ printf_x:
             pop rsi 
 
             ret           
-;--------------------------------------------
+;=============================================
     
-;--------------------------------------------
+;=============================================
 ;auxilary func for printf: printing %b                               
 ;--------------------------------------------
 ;Entry: r9  = attr: pointer for first untreated parameter  
@@ -212,9 +221,9 @@ printf_b:
             add r9, 8
 
             ret  
-;--------------------------------------------
+;=============================================
 
-;--------------------------------------------
+;=============================================
 ;auxilary func for printf: printing %o                               
 ;--------------------------------------------
 ;Entry: r9  = attr: pointer for first untreated parameter  
@@ -253,10 +262,10 @@ printf_o:
             add r9, 8
 
             ret   
+;=============================================
 
-;--------------------------------------------
 
-;--------------------------------------------
+;=============================================
 ;auxilary func for printf: printing %d                              
 ;--------------------------------------------
 ;Entry: r9  = attr: pointer for first untreated parameter  
@@ -270,7 +279,14 @@ printf_d:
             push rcx
             
             mov rax, [r9] 
-            
+            test rax, rax 
+
+            jns .positive_num   ;-|
+            mov byte [rdi], '-' ; |if num is negative print '-'
+            inc di              ;-|
+            neg rax 
+
+.positive_num:
             mov rsi, val_buff
             call print_rax_d
             dec rsi 
@@ -289,10 +305,10 @@ printf_d:
             add r9, 8
 
             ret  
-;--------------------------------------------
+;=============================================
 
 
-;--------------------------------------------
+;=============================================
 ;auxilary for printf: prints string (%s)
 ;--------------------------------------------
 ;Entry: 
@@ -301,14 +317,14 @@ printf_d:
 ;--------------------------------------------
 printf_s:        
 
-                if strlen ([r9]) > max_str_len --> write() string
-                if strlen ([r9]) > max_str_len - rcx --> put str in buff while it is possible, than write() buff and put str in buff 
-                else put str in buff 
+                ;if strlen ([r9]) > max_str_len --> write() string
+                ;if strlen ([r9]) > max_str_len - rcx --> put str in buff while it is possible, than write() buff and put str in buff 
+                ;else put str in buff 
 
                 ret 
-;--------------------------------------------
+;=============================================
 
-;--------------------------------------------
+;=============================================
 ;skips unnecessary zeroes in first rax bytes of mem
 ;--------------------------------------------
 ;Entry: rcx = attr: num of bytes to check 
@@ -326,7 +342,7 @@ skip_zeroes:
                 loop .next 
 .end:
                 ret 
-;--------------------------------------------
+;=============================================
 
 
 %include 'convert.s'
@@ -336,7 +352,7 @@ section .data
 max_str_len         equ 0xF5
 
 printing_str:       db " %o %d %x %b $", 0
-param1:             dq 505
+param1:             dq -505
 param2:             db "hello hello", 0
 
 

@@ -5,11 +5,11 @@ global _start
 ;==============================================
 ;==============================================
 _start:     ;                                 =
-            mov rax, [param1];                =
+            mov rax, [param1];                  =
             push rax;                         =
-            push rax;                         =
-            push rax;                         =
-            push rax;                         =
+            ;push rax;                         =
+            ;push rax;                         =
+            ;push rax;                         =
             ;                                 =  
             mov rax, printing_str;            =
             push rax;                         =
@@ -17,9 +17,9 @@ _start:     ;                                 =
             pop rax;                          =
             ;                                 =
             pop rax;                          =
-            pop rax;                          =
-            pop rax;                          =
-            pop rax;                          =
+            ;pop rax;                          =
+            ;pop rax;                          =
+            ;pop rax;                          =
             ;                                 =
             mov rax, 0x3c   ;-|               =
             xor rdi, rdi    ; | exit (rdi = 0)=
@@ -50,7 +50,7 @@ printf:
                 xor rcx, rcx            ;rcx = 0
 
 .next:      
-                cmp rcx, max_str_len    ;-|if (rcx >= max_str_len)
+                cmp rcx, MAX_STR_LEN    ;-|if (rcx >= max_str_len)
                 jnb .print_str          ;-|     goto .print_str
 
                 cmp byte [rsi], 0       ;-|check if format ends 
@@ -189,11 +189,12 @@ printf_x:
 ;Entry: r9  = attr: pointer for first untreated parameter  
 ;       rdi = attr: printf buff addr
 ;Exit: 
-;Destroys: rax = val, rbx, rcx += val_len + 2,
-;          rdx, rdi += val_len + 2, r9 += 8
+;Destroys: rax, rbx, rcx = new buff len,
+;          rdx, rdi = curr buff addr, r9 += 8
 ;--------------------------------------------
 printf_b:   
             push rsi 
+            push rcx 
             push rcx 
             
             mov rax, [r9] 
@@ -209,6 +210,13 @@ printf_b:
             
             mov rcx, 0x40
             call skip_zeroes
+            
+            mov rbx, MAX_STR_LEN    ;-|
+            pop rdx                 ; | 
+            sub rbx, rdx            ; |if (val_len > max_buff_len - buff_len)   goto no_free_place
+            cmp rcx, rbx            ; |
+            ja .no_free_place       ;-|
+
             mov rbx, rcx 
 
             rep movsb 
@@ -218,6 +226,40 @@ printf_b:
             add rcx, 2
             pop rsi 
 
+            jmp .end 
+
+.no_free_place:
+            mov rdx, rcx 
+            sub rdx, rbx
+
+            mov rcx, rbx 
+
+            rep movsb 
+            mov r10, rsi 
+
+            pop rcx 
+
+            mov rax, rdx    ;-| 
+            mov rdx, rbx    ; |swap rdx and rbx
+            add rdx, rcx    ; |rdx += buff len
+            mov rbx, rax    ;-|
+
+            mov rax, 0x01 
+            mov rdi, 1
+            mov rsi, printf_buff 
+            syscall 
+
+            mov rcx, rbx 
+            mov rsi, r10
+            mov rdi, printf_buff 
+
+            rep movsb 
+
+            mov rcx, rbx 
+
+            pop rsi 
+
+.end:
             add r9, 8
 
             ret  
@@ -311,18 +353,133 @@ printf_d:
 ;=============================================
 ;auxilary for printf: prints string (%s)
 ;--------------------------------------------
-;Entry: 
-;Exit:  
-;Destroys: None
+;Entry: r9  = attr: pointer for first untreated parameter
+;       rdi = attr: printf buff addr
+;       rcx = attr: buff len (< 0xF5)
+;Exit:  rcx = new buff len
+;       rdi = curr buff addr
+;Destroys: rax, rbx, rdx, rsi, r9 += 8, r10
 ;--------------------------------------------
 printf_s:        
+                push rsi
+                push rcx 
+                push rdi 
 
-                ;if strlen ([r9]) > max_str_len --> write() string
-                ;if strlen ([r9]) > max_str_len - rcx --> put str in buff while it is possible, than write() buff and put str in buff 
-                ;else put str in buff 
+                mov rbx, rcx  
+                
+                mov rdi, [r9]
+
+                call strlen 
+
+                cmp rcx, MAX_STR_LEN    ;-|if strlen ([r9]) > max_str_len -->write() buff and  write() string
+                ja .write_str           ;-|
+                 
+                mov r10, rbx            ;-|
+                mov rbx, MAX_STR_LEN    ; |rbx = max_len - rbx
+                sub rbx, r10            ;-|
+               ;; xor rbx, MAX_STR_LEN    ;-|
+                cmp rcx, rbx            ; |if strlen ([r9]) > max_str_len - rcx --> put str in buff while it is possible, than write() buff and put str in buff 
+                ja .write_buff          ;-|
+                                        ;(else put str in buff)
+
+                mov rdx, rcx            ;-|save str len in rdx
+
+                mov rsi, rdi            ;rsi = addr of string
+                pop rdi                 ;rdi = buff addr
+
+                rep movsb               ;while (rcx)  *rdi++ = *rsi++
+
+                pop rcx                 ;-|rcx = old counter + str len
+                add rcx, rdx            ;-|
+
+                pop rsi 
+
+                jmp .end 
+
+.write_str:     
+                pop r10 
+                mov r10, rdi 
+                mov rbx, rcx 
+
+                mov rax, 0x01           ;-|
+                mov rdi, 1              ; |
+                mov rsi, printf_buff    ; |write() buff
+                pop rdx                 ; |
+                syscall                 ;-|
+                
+                mov rax, 0x01
+                mov rsi, r10            ;-| 
+                mov rdx, rbx            ; |write() string
+                syscall                 ;-|
+
+                xor rcx, rcx  
+                mov rdi, printf_buff
+
+                pop rsi 
+
+                jmp .end 
+
+.write_buff:    
+                mov r10, rcx            ;save rcx in r10
+                sub r10, rbx            ;r10 -=printed len 
+                mov rcx, rbx            ;rcx = max_buff_len - buff_len
+
+                mov rsi, rdi            ;rsi = str addr
+                pop rdi                 ;rdi = buff addr
+
+                rep movsb               ;while (rcx) *rdi++ = *rsi++
+
+                push rsi                ;push curr string addr
+  
+                mov rax, 0x01           ;-|
+                mov rdi, 1              ; |
+                mov rsi, printf_buff    ; |write() buff 
+                mov rdx, MAX_STR_LEN    ; |
+                syscall                 ;-|
+
+                pop rsi 
+                pop rcx                 ;-|rcx = len of unprinted str
+                mov rcx, r10            ;-|
+                mov rdi, printf_buff 
+
+                rep movsb 
+
+                mov rcx, r10            ;rcx = len of buff
+
+                pop rsi 
+
+.end:           
+                add r9, 8
+                
+                
+                ret 
+;=============================================
+
+
+
+;=============================================
+;counts ctring len (up to 0)
+;--------------------------------------------
+;Entry: rdi = attr: start string addr 
+;Exit:  rcx = attr: str len 
+;Destroys: al = 0, r10 = rdi
+;--------------------------------------------
+strlen:    
+                cld 
+                
+                mov r10, rdi 
+                mov al, 0
+
+                mov rcx, LONG_LONG_MAX
+                repne scasb
+                xor rcx, LONG_LONG_MAX
+                dec rcx 
+
+                mov rdi, r10 
 
                 ret 
 ;=============================================
+
 
 ;=============================================
 ;skips unnecessary zeroes in first rax bytes of mem
@@ -349,11 +506,12 @@ skip_zeroes:
 
 section .data  
 
-max_str_len         equ 0xF5
+LONG_LONG_MAX       equ 0xffffffffffffffff
+MAX_STR_LEN         equ 60;0xe9
 
-printing_str:       db " %o %d %x %b $", 0
-param1:             dq -505
-param2:             db "hello hello", 0
+printing_str:       db "ssdnsjdsdsndg  %b fdsdz", 0
+param1:             dq -2
+param2:             db "heo", 0
 
 
 printf_buff:        db 0xFF dup (0)

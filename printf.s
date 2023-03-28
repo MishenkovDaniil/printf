@@ -1,41 +1,76 @@
 section .text
 
-global _start 
+global strt_printf 
+
+extern printf 
+
 
 ;==============================================
 ;==============================================
-_start:     ;                                 =
-            mov rax, [param1];                  =
-            push rax;                         =
+strt_printf:    
+                pop qword [ret_addr]
+                
+                push r9 
+                push r8 
+                push rcx 
+                push rdx
+                push rsi  
+                push rdi  
+
+                call printf_main 
+
+                pop rdi 
+                pop rsi 
+                pop rdx 
+                pop rcx 
+                pop r8 
+                pop r9 
+
+                call printf 
+
+                push qword [ret_addr]
+
+               ret
+;==============================================
+;==============================================
+
+
+;==============================================
+;==============================================
+;_start:     ;                                 =
+           ; mov rax, [param1];                =
+;            push 0x64;                         =
+;            mov rax, [param3]
+;            push rax 
             ;push rax;                         =
             ;push rax;                         =
             ;push rax;                         =
             ;                                 =  
-            mov rax, printing_str;            =
-            push rax;                         =
-            call printf;                      =
-            pop rax;                          =
+;            mov rax, printing_str;            =
+;            push rax;                         =
+;            call printf_main;                      =
+;            pop rax;                          =
             ;                                 =
-            pop rax;                          =
+;            pop rax;                          =
             ;pop rax;                          =
             ;pop rax;                          =
             ;pop rax;                          =
             ;                                 =
-            mov rax, 0x3c   ;-|               =
-            xor rdi, rdi    ; | exit (rdi = 0)=
-            syscall         ;-|               =
+;            mov rax, 0x3c   ;-|               =
+;            xor rdi, rdi    ; | exit (rdi = 0)=
+;            syscall         ;-|               =
 ;==============================================
 ;==============================================
 
 
 ;=============================================
-;cdecl printf (const char *format,...)                               
+;__cdecl printf (const char *format,...)                               
 ;--------------------------------------------
-;Entry: stack 
-;Exit: 
+;Entry: RSP on format 
+;Exit: None
 ;Destroys: rax, rcx, rdx, rsi, rdi, r9, r10, r11 
 ;--------------------------------------------
-printf:     
+printf_main:     
                 mov r9, rsp             ;-|r9 on first stack arg
                 add r9, 8               ;-|           
                 mov rdx, [r9]           ;rdx = format 
@@ -133,14 +168,17 @@ printf_default:
 ;Entry: r9  = attr: pointer for first untreated parameter  
 ;       rdi = attr: printf buff addr
 ;Exit: 
-;Destroys: rsi, rdi += 1, r9 
+;Destroys: rsi, rdi += 1, r9 += 8
 ;--------------------------------------------
 printf_c:   
             push rsi 
-            mov rsi, [r9]          ;rax = first untreated parameter (%c)
+
+            mov rsi, r9            ;rax = first untreated parameter (%c)
             movsb
             add r9, 8              ;r9 to next parameter
+            
             pop rsi 
+            inc rcx 
 
             ret 
 ;=============================================
@@ -509,14 +547,23 @@ section .data
 LONG_LONG_MAX       equ 0xffffffffffffffff
 MAX_STR_LEN         equ 0xe9
 
-printing_str:       db "ssdnsjdsdsndg  %b fdsdz", 0
-param1:             dq -2
+printing_str:       db "ssdnsjdsdsndg  %d %c fdsdz", 0
+param1:             db 'f'
+param3:             dq 14
 param2:             db "heo", 0
 
+
+ret_addr:           dq 0
 
 printf_buff:        db 0xFF dup (0)
 val_buff:           db 0x40 dup (0)
 
+;'-' перед каждым словом, "%d %b %x %d%%%c%d"
+;
+;
+;
+;
+;stdcall: asm from c and c from asm
 
 
 section .rodata align = 8            ;alignment addr on 8 byte

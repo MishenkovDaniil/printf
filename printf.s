@@ -30,7 +30,7 @@ strt_printf:
 
                 push qword [ret_addr]
 
-               ret
+                ret
 ;==============================================
 ;==============================================
 
@@ -152,12 +152,13 @@ printf_main:
 ;=============================================
 ;error format treatment
 ;--------------------------------------------
-;Entry:
-;Exit:
-;Destroys:
+;Entry: rsi = attr: on error char
+;Exit: rsi++, rdi++, rcx++
+;Destroys: None
 ;--------------------------------------------
 printf_default:
-                ;error
+                movsb 
+                inc rcx
                 ret 
 ;=============================================
 
@@ -352,19 +353,24 @@ printf_o:
 ;       rdi = attr: printf buff addr
 ;       rcx = attr: buff len (< 0xF5)
 ;Exit:  rcx = new buff_len 
-;Destroys: rax, rbx, rdx, rdi, r9, r11
+;Destroys: rax, rbx, rdx, rdi, r9, r10, r11
 ;--------------------------------------------
 printf_d:   
             push rsi 
             push rcx
             
+            xor r10, r10
+            
             mov rax, [r9] 
             test rax, rax 
 
+
             jns .positive_num   ;-|
             mov byte [rdi], '-' ; |if num is negative print '-'
-            inc di              ;-|
+            inc rdi             ;-|
             neg rax 
+
+            inc r10
 
 .positive_num:
             mov rsi, val_buff
@@ -380,6 +386,7 @@ printf_d:
             
             pop rcx 
             add rcx, r11 
+            add rcx, r10 
             pop rsi 
 
             add r9, 8

@@ -34,35 +34,6 @@ strt_printf:
 ;==============================================
 ;==============================================
 
-
-;==============================================
-;==============================================
-;_start:     ;                                 =
-           ; mov rax, [param1];                =
-;            push 0x64;                         =
-;            mov rax, [param3]
-;            push rax 
-            ;push rax;                         =
-            ;push rax;                         =
-            ;push rax;                         =
-            ;                                 =  
-;            mov rax, printing_str;            =
-;            push rax;                         =
-;            call printf_main;                      =
-;            pop rax;                          =
-            ;                                 =
-;            pop rax;                          =
-            ;pop rax;                          =
-            ;pop rax;                          =
-            ;pop rax;                          =
-            ;                                 =
-;            mov rax, 0x3c   ;-|               =
-;            xor rdi, rdi    ; | exit (rdi = 0)=
-;            syscall         ;-|               =
-;==============================================
-;==============================================
-
-
 ;=============================================
 ;__cdecl printf (const char *format,...)                               
 ;--------------------------------------------
@@ -360,7 +331,7 @@ printf_d:
             push rcx
             
             xor r10, r10
-            
+
             mov rax, [r9] 
             test rax, rax 
 
@@ -586,7 +557,4 @@ percent_jmp_table:
     times 4     dq   printf_default
     dq               printf_x
 
-
-
-;code map  посмотреть и горяие клавиши ida  
  
